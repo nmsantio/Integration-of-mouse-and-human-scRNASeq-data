@@ -1,0 +1,15 @@
+library(nichenetr)
+
+data.mouse = mcrEC
+data.mouse.exp_mtx  = as.matrix(data.mouse@assays$RNA@data)
+data.mouse.con_df   = data.frame(mouse_orig = rownames(data.mouse.exp_mtx),
+                                 human = convert_mouse_to_human_symbols(rownames(data.mouse.exp_mtx)),
+                                 stringsAsFactors = F)
+
+## There are a lot of NAs for which there are no human genes matching
+data.mouse.con_df   = data.mouse.con_df[!is.na(data.mouse.con_df$human),,F]
+
+## Filter the expression matrix for genes that have human counterpart available
+data.mouse.exp_mtx  = data.mouse.exp_mtx[data.mouse.con_df$mouse_orig,]
+rownames(data.mouse.exp_mtx) = data.mouse.con_df$human
+data.mouse.fixed    = CreateSeuratObject(counts = data.mouse.exp_mtx, meta.data = data.mouse@meta.data)

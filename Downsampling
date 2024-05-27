@@ -1,0 +1,20 @@
+
+library(nichenetr)
+# example with mouse lung EC data
+# down sample to 75%
+mLung = AddMetaData(filename , Idents(filename), col.name = "cell_type")
+set.seed(12345)
+downsample_proportion = 0.75
+downsampled_clusters = list()
+
+for (cluster_id in unique(mLung$cell_type)) {
+  cluster_cells = subset(x = mLung, subset = cell_type == cluster_id)
+  num_cells_to_keep = round(ncol(cluster_cells) * downsample_proportion)
+  downsampled_cluster = subset(x = cluster_cells, downsample = num_cells_to_keep)
+  downsampled_clusters[[as.character(cluster_id)]] = downsampled_cluster
+}
+
+data_down = merge(x = downsampled_clusters[["Vein"]], y = list(downsampled_clusters[["gCap"]], downsampled_clusters[["aCap"]], downsampled_clusters[["hIFN"]],
+                                                                downsampled_clusters[["Artery"]],  downsampled_clusters[["LEC"]],  downsampled_clusters[["crEC"]]))
+
+saveRDS(data_down, file = "data_down.rds")

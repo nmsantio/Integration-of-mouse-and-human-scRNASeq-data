@@ -13,3 +13,5 @@ data.mouse.con_df   = data.mouse.con_df[!is.na(data.mouse.con_df$human),,F]
 data.mouse.exp_mtx  = data.mouse.exp_mtx[data.mouse.con_df$mouse_orig,]
 rownames(data.mouse.exp_mtx) = data.mouse.con_df$human
 data.mouse.fixed    = CreateSeuratObject(counts = data.mouse.exp_mtx, meta.data = data.mouse@meta.data)
+
+saveRDS(data.mouse.fixed, file = "data.mouse.fixed.rds")

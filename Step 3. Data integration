@@ -1,0 +1,157 @@
+# see mouse data processing at https://github.com/nmsantio/Mouse-melanoma-lung-EC-scRNASeq
+# see human data processing at
+
+#-----------DATA FOR HUMAN AND MOUSE INTEGRATION----------------
+
+merged =  merge(data.mouse.fixed, hLung)
+View(merged@meta.data)
+merged[["RNA"]] = JoinLayers(merged[["RNA"]])
+rdata = GetAssayData(merged, assay = "RNA", layer = "counts")
+rdata = CreateSeuratObject(counts = rdata)
+
+# keep information from metadatatable
+temp = merged@meta.data
+all(colnames(rdata) == row.names(temp)) # [1] TRUE
+
+# select the data
+rdata = AddMetaData(rdata, temp$percent.mt, col.name = "percent.mt")
+rdata = AddMetaData(rdata, temp$percent.rb, col.name = "percent.rb")
+rdata = AddMetaData(rdata, temp$sampleID, col.name = "sampleID")
+rdata = AddMetaData(rdata, temp$treatment, col.name = "treatment")
+rdata = AddMetaData(rdata, temp$organism, col.name = "organism")
+rdata = AddMetaData(rdata, temp$cell_type, col.name = "cell_type")
+rdata = AddMetaData(rdata, temp$datset, col.name = "datset")
+rdata = AddMetaData(rdata, temp$org.sample, col.name = "org.sample")
+rdata = AddMetaData(rdata, temp$org.ann.lev1, col.name = "org.ann.lev1")
+rdata = AddMetaData(rdata, temp$org.ann.lev3, col.name = "org.ann.lev3")
+rdata = AddMetaData(rdata, temp$org.ann.lev4, col.name = "org.ann.lev4")
+rdata = AddMetaData(rdata, temp$old.org.ann, col.name = "old.org.ann")
+rdata = AddMetaData(rdata, temp$old.org.ann2, col.name = "old.org.ann2")
+rdata = AddMetaData(rdata, temp$org.scanvi_label, col.name = "org.scanvi_label")
+rdata = AddMetaData(rdata, temp$org.tissue, col.name = "org.tissue")
+rdata = AddMetaData(rdata, temp$org.cell_type, col.name = "org.cell_type")
+rdata = AddMetaData(rdata, temp$IDs, col.name = "IDs")
+
+#save
+saveRDS(rdata, file = "rdataHM_mergedRNA.rds")
+
+#check data
+View(rdata@meta.data)
+
+# SCT and PCA
+rdata[["RNA"]] = split(rdata[["RNA"]], f = rdata$sampleID)
+options(future.globals.maxSize = 3e+09)
+Sobj5 = SCTransform(rdata)
+Sobj5 = RunPCA(Sobj5, npcs = 50, verbose = F)
+
+# visualize dims
+pdf("med.elbowplots_S5.pdf")
+ElbowPlot(Sobj5, ndims = 50)
+dev.off()
+
+#save
+saveRDS(Sobj5, file = "Sobj5_HMforintegration.rds")
+
+#integrate
+integrateddata = IntegrateLayers(object = Sobj5,  method = RPCAIntegration,  normalization.method = "SCT",  verbose = T)
+clustereddata = FindNeighbors(integrateddata, reduction = "integrated.dr", dims = 1:20)
+clustered = FindClusters(clustereddata, resolution = 0.55)
+UMAP = RunUMAP(clustered, reduction = "integrated.dr", dims = 1:20)
+saveRDS(UMAP, file = "UMAP_res055_PC20.rds")
+
+# Visualization
+DefaultAssay(UMAP) = "SCT"
+UMAPPlot(UMAP, label = F, split.by = "treatment", pt.size = 0.3)
+DotPlot(names_grouped, features = (crECconserved)) + RotatedAxis() + scale_colour_gradient2(low = "#0000FF", mid = "#FFFFFF", high = "#FF0000")
+
+markers = c("PECAM1", "CDH5", "TEK",                         # ENDOTHELIAL
+                "IGFBP3","GJA5","BMX",                       # ARTERY          
+                "EDN1", "CD93", "PTPRB",                     # GCAP
+                "PTMA", "SPTBN1",  "KTN1",                   # iGCAP
+                "ISG15", "IFIT1B", "IFI44",                  # hIFN
+                "BCL3", "PIM3", "ADAMTS9",                   # CREC
+                "HLA-DRB1", "SERPINE1", "S100A3",            # iACAP
+                "EDNRB", "CA4", "APLN",                      # ACAP          
+                "CCL21","TFF3", "MMRN1",                     # LEC
+                "CPE","ACKR1", "CLU",                        # PULMONARY VENOUS  
+                "COL15A1","VWA1","SPARCL1")                  # SYSTEMIC VENOUS 
+             
+#table(UMAP@meta.data$treatment)
+saveRDS(UMAP, file = "umapRES05_DIMS24.rds")
+
+#rename
+names_grouped = RenameIdents((UMAP),
+                             `4` = "Artery",
+                             `9` = "Artery",
+                             `0` = "gCap", 
+                             `1` = "igCap",
+                             `2` = "gCap",
+                             `11` = "gCap",
+                             `12` = "hIFN",
+                             `6` = "crEC",
+                             `3` = "aCap",
+                             `7` = "iaCap", 
+                             `10` = "aCap",
+                             `8` = "LEC",
+                             `5` = "VeinP",
+                             `13` = "VeinS") 
+View(names_grouped@meta.data)
+table(names_grouped@meta.data$sampleID)
+
+#add conditional information
+temp = names_grouped@meta.data
+temp = temp %>%
+  mutate(condition = case_when(sampleID %in%  c("Trav1") ~ "NormAdj",
+                               sampleID %in%  c("Trav2") ~ "NormAdj",
+                               sampleID %in%  c("Trav3") ~ "NormAdj",
+                               sampleID %in%  c("Banov") ~ "HealthyH",
+                               sampleID %in%  c("c1") ~ "Ctrl",
+                               sampleID %in%  c("c2") ~ "Ctrl",
+                               sampleID %in%  c("c3") ~ "Ctrl",
+                               sampleID %in%  c("m6h1") ~ "F10B16",
+                               sampleID %in%  c("m6h2") ~ "F10B16",
+                               sampleID %in%  c("m6h3") ~ "F10B16"))
+
+all(row.names(temp) == colnames(names_grouped)) #TRUE
+names_grouped = AddMetaData(names_grouped, metadata = temp$condition, col.name = "condition")
+
+saveRDS(names_grouped, file = "names_grouped.rds")
+
+## -----------------CLUSTER VISUALIZATION AND MARKER IDENTIFICATION ---------------------------
+
+# Visualization
+tiff("Clusters_manuscript_organism.tiff", units="in", width=8, height=4, res=500)
+UMAPPlot(names_grouped, label = F, split.by = "organism", pt.size = 0.1,
+         cols = c('Artery'='#F8766D','gCap'='#00C094','igCap'='#96E6D3','hIFN'='#c49a00','crEC'='#00b4eb', 'aCap'='#53B400','iaCap'='#396D0E', 
+                  'LEC'='#A58AFF','VeinP'='#FB61D7', 'VeinS'='#9B1F7E'))
+dev.off()
+
+
+# Visualization
+tiff("Clusters_mouse_human.tiff", units="in", width=5, height=4, res=500)
+UMAPPlot(names_grouped, label = F, group.by = "organism", pt.size = 0.3,
+         cols = c('mouse'='#f2a5ce','human'='#9eeada'))
+dev.off()
+
+#find markers
+DefaultAssay(names_grouped) = "SCT"
+ClusterMarkersPrep = PrepSCTFindMarkers(names_grouped, assay = "SCT", verbose = TRUE)
+Hsub = subset(ClusterMarkersPrep, organism  %in% c("human"))
+Msub = subset(ClusterMarkersPrep, organism  %in% c("mouse"))
+ClusterMarkers = FindAllMarkers(ClusterMarkersPrep, assay = "SCT", 
+                                recorrect_umi = FALSE, 
+                                verbose = FALSE, 
+                                only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.1)
+write.table(ClusterMarkers, "MarkersAll_allgroups_FC01_minPCT01.txt", sep="\t", row.names=TRUE, col.names=TRUE, quote= F)
+
+ClusterMarkers = FindAllMarkers(Hsub, assay = "SCT", 
+                                recorrect_umi = FALSE, 
+                                verbose = FALSE, 
+                                only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.1)
+write.table(ClusterMarkers, "MarkersH_FC01_minPCT01.txt", sep="\t", row.names=TRUE, col.names=TRUE, quote= F)
+
+ClusterMarkers = FindAllMarkers(Msub, assay = "SCT", 
+                                recorrect_umi = FALSE, 
+                                verbose = FALSE, 
+                                only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.1)
+write.table(ClusterMarkers, "MarkersM_FC01_minPCT01.txt", sep="\t", row.names=TRUE, col.names=TRUE, quote= F)

@@ -3,14 +3,19 @@ SYSTEM REQUIREMENTS
 Windows Operating system 
 
 Computer with minimum: 
+
 -64 Gt RAM
+
 -CPU with 8 cores or more
+
 - 1 Tb of hard disk space
+- 
 
 1: Install R (Version: 4.4.1) 
 2: Install RStudio (Version: 2024.04.2+764)
 
 Install the following R packages:
+
 BiocNeighbors	https://www.bioconductor.org/packages/release/bioc/html/BiocNeighbors.html 
 
 CellChat	http://www.cellchat.org/  
@@ -76,6 +81,7 @@ viridis		https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viri
 INSTALLATION QUIDE
 
 https://posit.co/download/rstudio-desktop/
+
 estimated install time: 30 min - 1 h
 
 See links above for R package installation.
@@ -85,9 +91,11 @@ INSTRUCTIONS FOR USE
 DATA 1. Mouse melanoma and control lung data
 
 Follow code at: 
+
 https://github.com/nmsantio/Mouse-melanoma-lung-EC-scRNASeq
 
 DATA 3. Human lung EC data from
+
 https://hlca.ds.czbiohub.org/
 
 Download data:
@@ -103,15 +111,24 @@ Follow code at:
 https://github.com/nmsantio/Integration-of-mouse-and-human-scRNASeq-data
 
 Open both datasets created from DATA 3 and DATA 1 in R. 
+
 Step 1. Downsampling - Replace filename with mouse data file name
+
 Step 2. Mouse gene names to human
+
 Step 3. Data integration - Check that the human data file has name hLung, if not, replace hLung with the datafile name
 
+
 Link summary to github
+
 https://github.com/nmsantio/Mouse-melanoma-lung-EC-scRNASeq
+
 https://github.com/nmsantio/HLCA_scRNASeq_EC
+
 https://github.com/nmsantio/Integration-of-mouse-and-human-scRNASeq-data
 
 Additional visualization instructions can be found from the above mentioned links, mainly at
+
 https://satijalab.org/seurat/
+
 https://samuel-marsh.github.io/scCustomize/index.html
